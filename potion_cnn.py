@@ -36,7 +36,7 @@ def main():
     print(arg)
 
     #Prepare DataLoader
-    data_loader = dataloader.spatial_dataloader(
+    data_loader = dataloader.potion_dataloader(
                         BATCH_SIZE=arg.batch_size,
                         num_workers=8,
                         path='/media/bighdd1/arayasam/dataset/UCF101/jpegs_256/',
@@ -46,7 +46,7 @@ def main():
     
     train_loader, test_loader, test_video = data_loader.run()
     #Model 
-    model = Spatial_CNN(
+    model = Potion_CNN(
                         nb_epochs=arg.epochs,
                         lr=arg.lr,
                         batch_size=arg.batch_size,
@@ -60,7 +60,7 @@ def main():
     #Training
     model.run()
 
-class Spatial_CNN():
+class Potion_CNN():
     def __init__(self, nb_epochs, lr, batch_size, resume, start_epoch, evaluate, train_loader, test_loader, test_video):
         self.nb_epochs=nb_epochs
         self.lr=lr

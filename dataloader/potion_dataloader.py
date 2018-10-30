@@ -7,7 +7,7 @@ from .split_train_test_video import *
 from skimage import io, color, exposure
 import cv2
 
-class spatial_dataset(Dataset):  
+class potion_dataset(Dataset):  
     def __init__(self, dic, root_dir, mode, transform=None):
  
         self.keys = list(dic.keys())
@@ -71,7 +71,7 @@ class spatial_dataset(Dataset):
            
         return sample
 
-class spatial_dataloader():
+class potion_dataloader():
     def __init__(self, BATCH_SIZE, num_workers, path, ucf_list, ucf_split):
 
         self.BATCH_SIZE=BATCH_SIZE
@@ -126,7 +126,7 @@ class spatial_dataloader():
                 self.dic_testing[key] = self.test_video[video]      
 
     def train(self):
-        training_set = spatial_dataset(dic=self.dic_training, root_dir=self.data_path, mode='train', transform = transforms.Compose([
+        training_set = potion_dataset(dic=self.dic_training, root_dir=self.data_path, mode='train', transform = transforms.Compose([
                 transforms.RandomCrop(224),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
@@ -150,7 +150,7 @@ class spatial_dataloader():
         return train_loader
 
     def validate(self):
-        validation_set = spatial_dataset(dic=self.dic_testing, root_dir=self.data_path, mode='val', transform = transforms.Compose([
+        validation_set = potion_dataset(dic=self.dic_testing, root_dir=self.data_path, mode='val', transform = transforms.Compose([
                 transforms.Scale([224,224]),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
@@ -168,7 +168,7 @@ class spatial_dataloader():
 
 if __name__ == '__main__':
     
-    dataloader = spatial_dataloader(BATCH_SIZE=1, num_workers=1, 
+    dataloader = potion_dataloader(BATCH_SIZE=1, num_workers=1, 
                                 path='/media/bighdd1/arayasam/dataset/UCF101/jpegs_256/', 
                                 ucf_list='/media/bighdd1/arayasam/actionRecognition/UCF_list/',
                                 ucf_split='01')
