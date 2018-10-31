@@ -31,6 +31,11 @@ class potion_dataset(Dataset):
          
         # img = Image.open(path +str(index)+'.jpg')
         img = Image.open(path + '/frame000001.jpg')
+
+        #Test image being loaded
+        print("Loading image validation:")
+        img.save("./load_ucf/" + video_name + str(index)+ ".png")
+
         transformed_img = self.transform(img)
         img.close()
 
@@ -108,8 +113,10 @@ class potion_dataloader():
         #print '==> Generate frame numbers of each training video'
         self.dic_training={}
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        print(self.train_video)
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+
         for video in self.train_video:
-            print(video)
             nb_frame = self.frame_count[video]-10+1
             key = video+' '+ str(nb_frame)
             self.dic_training[key] = self.train_video[video]
@@ -134,11 +141,11 @@ class potion_dataloader():
                 ]))
         print('==> Training data :',len(training_set),'frames')
         
-        print("RC's data validation:")
+        # print("RC's data validation:")
         for idx in range(len(training_set)):
-            print("############################")
-            print(training_set[idx])
-            print("############################")
+            # print("############################")
+            # print(training_set[idx])
+            # print("############################")
             if idx > 10:
                 break
 

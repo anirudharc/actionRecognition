@@ -114,7 +114,7 @@ class Potion_CNN():
             # save model
             if is_best:
                 self.best_prec1 = prec1
-                with open('record/spatial/spatial_video_preds.pickle','wb') as f:
+                with open('record/potion/potion_video_preds.pickle','wb') as f:
                     pickle.dump(self.dic_video_level_preds,f)
                 f.close()
             
@@ -123,7 +123,7 @@ class Potion_CNN():
                 'state_dict': self.model.state_dict(),
                 'best_prec1': self.best_prec1,
                 'optimizer' : self.optimizer.state_dict()
-            },is_best,'record/spatial/checkpoint.pth.tar','record/spatial/model_best.pth.tar')
+            },is_best,'record/potion/checkpoint.pth.tar','record/potion/model_best.pth.tar')
 
     def train_1epoch(self):
         print('==> Epoch:[{0}/{1}][training stage]'.format(self.epoch, self.nb_epochs))
@@ -264,11 +264,6 @@ class Potion_CNN():
             
         #print(' * Video level Prec@1 {top1:.3f}, Video level Prec@5 {top5:.3f}'.format(top1=top1, top5=top5))
         return top1,top5,loss.data.cpu().numpy()
-
-
-
-
-
 
 
 if __name__=='__main__':

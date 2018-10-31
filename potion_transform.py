@@ -30,7 +30,8 @@ def load_images_from_folder(path):
             b = True
             ratio = 1 - ratio
     
-        print(idx, idx % canvas_split, ratio)
+        # print(idx, idx % canvas_split, ratio)
+        # img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255/canvas_split, g*ratio*255/canvas_split, r*(1-ratio)*255/canvas_split]
         img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255, g*ratio*255, r*(1-ratio)*255]
         potion.append(img)
 
