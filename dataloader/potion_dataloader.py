@@ -6,36 +6,80 @@ import random
 from .split_train_test_video import *
 from skimage import io, color, exposure
 import cv2
+import os
+import numpy as np
+
+BASE_DIR = os.getcwd()
+DATA_DIR = '/media/bighdd1/arayasam/dataset/UCF101'
+RGB_DIR  = DATA_DIR + '/jpegs_256/'
+# POSE_DIR = DATA_DIR + '/poseframes'
+POSE_DIR = '/media/bighdd1/arayasam/dataset/output_heatmaps_folder/'
+UCF_LIST = '/media/bighdd1/arayasam/actionRecognition/UCF_list/'
 
 class potion_dataset(Dataset):  
-    def __init__(self, dic, root_dir, mode, transform=None):
+    def __init__(self, dic, rgb_dir, pose_dir, mode, transform=None):
  
         self.keys = list(dic.keys())
         self.values= list(dic.values())
-        self.root_dir = root_dir
+        self.rgb_dir = rgb_dir
+        self.pose_dir = pose_dir
         self.mode =mode
         self.transform = transform
 
     def __len__(self):
         return len(self.keys)
 
-    def load_ucf_image(self,video_name, index):
-        if video_name.split('_')[0] == 'HandstandPushups':
-            n,g = video_name.split('_',1)
-            name = 'HandStandPushups_'+g
-            # path = self.root_dir + 'HandstandPushups'+'/separated_images/v_'+name+'/v_'+name+'_'
-            path = self.root_dir + 'v_' + video_name #+'/v_'+video_name+'_'
-        else:
-            # path = self.root_dir + video_name.split('_')[0]+'/separated_images/v_'+video_name+'/v_'+video_name+'_'
-            path = self.root_dir + 'v_' + video_name #+'/v_'+video_name+'_'
-         
-        # img = Image.open(path +str(index)+'.jpg')
-        img = Image.open(path + '/frame000001.jpg')
+    def potion_transform(self, video_name):
+        path = self.pose_dir + 'v_' + video_name + '/'
+        images = []
+        for filename in sorted(os.listdir(path)):
+            img = cv2.imread(os.path.join(path, filename), cv2.IMREAD_GRAYSCALE)
+            # Transform image to monochrome
+            if img is not None:
+                potion_t = img.copy()
+                potion_t[np.where(potion_t > [0])] = [255]
+                potion_t = cv2.cvtColor(potion_t, cv2.COLOR_GRAY2BGR)
+                images.append(potion_t)
 
-        #Test image being loaded
-        print("Loading image validation:")
-        img.save("./load_ucf/" + video_name + str(index)+ ".png")
+        b = False
+        r = g = True
+        pose_list = []
+        agg_image = images[0]
+        agg_image[np.where(True)] = [0, 0, 0]
+        canvas_split = len(images)//2 + 1
+        for idx, img in enumerate(images):
+            # Modulate ratio to get blend of red-green and green-blue
+            ratio = (idx % canvas_split)/canvas_split
+            if idx >= canvas_split:
+                r = False
+                b = True
+                ratio = 1 - ratio
 
+            # Normalize the pixel intensities - no. of frames
+            img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255/canvas_split, g*ratio*255/canvas_split, r*(1-ratio)*255/canvas_split]
+            # img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255, g*ratio*255, r*(1-ratio)*255]
+            pose_list.append(img)
+
+            agg_image = cv2.add(agg_image, img)
+            
+        # verification snippet - REMOVE 
+        name = "/media/bighdd1/arayasam/actionRecognition/output/agg_image_" + video_name + ".png" 
+        cv2.imwrite(name, agg_image)
+
+        return images, pose_list, agg_image
+
+    def load_ucf_image(self, video_name):
+        rgb_path = self.rgb_dir + 'v_' + video_name #+'/v_'+video_name+'_'
+  
+        # PoTion transformation
+        image_list, pose_list, img = self.potion_transform(video_name)
+        # img = Image.open(rgb_path + '/frame000001.jpg')
+
+        # Test image being loaded
+        # print("Loading image validation:")
+        # img.save("./load_ucf/" + video_name + ".png")
+
+        img = Image.fromarray(img)
         transformed_img = self.transform(img)
         img.close()
 
@@ -44,32 +88,24 @@ class potion_dataset(Dataset):
     def __getitem__(self, idx):
 
         if self.mode == 'train':
-            video_name, nb_clips = self.keys[idx].split(' ')
-            nb_clips = int(nb_clips)
-            clips = []
-            clips.append(random.randint(1, nb_clips//3))
-            clips.append(random.randint(nb_clips//3, nb_clips*2//3))
-            clips.append(random.randint(nb_clips*2//3, nb_clips+1))
+            video_name = self.keys[idx]
             
         elif self.mode == 'val':
-            video_name, index = self.keys[idx].split(' ')
-            index =abs(int(index))
+            video_name = self.keys[idx]
         else:
             raise ValueError('There are only train and val mode')
 
         label = self.values[idx]
         label = int(label)-1
         
+        data ={}
         if self.mode=='train':
-            data ={}
-            for i in range(len(clips)):
-                key = 'img'+str(i)
-                index = clips[i]
-                data[key] = self.load_ucf_image(video_name, index)
+            # Maintaining a dict for future extension of features
+            data['potion'] = self.load_ucf_image(video_name)
                     
             sample = (data, label)
         elif self.mode=='val':
-            data = self.load_ucf_image(video_name,index)
+            data['potion'] = self.load_ucf_image(video_name)
             sample = (video_name, data, label)
         else:
             raise ValueError('There are only train and val mode')
@@ -77,19 +113,20 @@ class potion_dataset(Dataset):
         return sample
 
 class potion_dataloader():
-    def __init__(self, BATCH_SIZE, num_workers, path, ucf_list, ucf_split):
+    def __init__(self, BATCH_SIZE, num_workers, rgb_path, pose_path, ucf_list, ucf_split):
 
         self.BATCH_SIZE=BATCH_SIZE
         self.num_workers=num_workers
-        self.data_path=path
-        self.frame_count ={}
+        self.rgb_path=rgb_path
+        self.pose_path=pose_path
+        self.frame_count={}
         # split the training and testing videos
         splitter = UCF101_splitter(path=ucf_list,split=ucf_split)
         self.train_video, self.test_video = splitter.split_video()
 
     def load_frame_count(self):
         #print '==> Loading frame number of each video'
-        with open('/media/bighdd1/arayasam/actionRecognition/dataloader/dic/frame_count.pickle','rb') as file:
+        with open(BASE_DIR + '/dataloader/dic/frame_count.pickle','rb') as file:
             dic_frame = pickle.load(file)
         file.close()
 
@@ -100,21 +137,9 @@ class potion_dataloader():
                 videoname = 'HandstandPushups_'+ g
             self.frame_count[videoname]=dic_frame[line]
 
-    def run(self):
-        self.load_frame_count()
-        self.get_training_dic()
-        self.val_sample20()
-        train_loader = self.train()
-        val_loader = self.validate()
-
-        return train_loader, val_loader, self.test_video
-
     def get_training_dic(self):
         #print '==> Generate frame numbers of each training video'
         self.dic_training={}
-        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-        print(self.train_video)
-        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
 
         for video in self.train_video:
             nb_frame = self.frame_count[video]-10+1
@@ -130,24 +155,25 @@ class potion_dataloader():
             for i in range(19):
                 frame = i*interval
                 key = video+ ' '+str(frame+1)
-                self.dic_testing[key] = self.test_video[video]      
+                self.dic_testing[key] = self.test_video[video]
+
+    def run(self):
+        # self.load_frame_count()
+        # self.get_training_dic()
+        # self.val_sample20()
+        train_loader = self.train()
+        val_loader = self.validate()
+
+        return train_loader, val_loader, self.test_video
 
     def train(self):
-        training_set = potion_dataset(dic=self.dic_training, root_dir=self.data_path, mode='train', transform = transforms.Compose([
+        training_set = potion_dataset(dic=self.train_video, rgb_dir=self.rgb_path, pose_dir=self.pose_path, mode='train', transform = transforms.Compose([
                 transforms.RandomCrop(224),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
                 ]))
         print('==> Training data :',len(training_set),'frames')
-        
-        # print("RC's data validation:")
-        for idx in range(len(training_set)):
-            # print("############################")
-            # print(training_set[idx])
-            # print("############################")
-            if idx > 10:
-                break
 
         train_loader = DataLoader(
             dataset=training_set, 
@@ -157,14 +183,14 @@ class potion_dataloader():
         return train_loader
 
     def validate(self):
-        validation_set = potion_dataset(dic=self.dic_testing, root_dir=self.data_path, mode='val', transform = transforms.Compose([
+        validation_set = potion_dataset(dic=self.train_video, rgb_dir=self.rgb_path, pose_dir=self.pose_path, mode='val', transform = transforms.Compose([
                 transforms.Scale([224,224]),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
                 ]))
         
         print('==> Validation data :',len(validation_set),'frames')
-        print(validation_set[1][1].size())
+        print(validation_set[1][1]['potion'].size())
 
         val_loader = DataLoader(
             dataset=validation_set, 
@@ -176,7 +202,8 @@ class potion_dataloader():
 if __name__ == '__main__':
     
     dataloader = potion_dataloader(BATCH_SIZE=1, num_workers=1, 
-                                path='/media/bighdd1/arayasam/dataset/UCF101/jpegs_256/', 
-                                ucf_list='/media/bighdd1/arayasam/actionRecognition/UCF_list/',
+                                rgb_path=RGB_DIR,
+                                pose_path=POSE_DIR,
+                                ucf_list=UCF_LIST,
                                 ucf_split='01')
     train_loader,val_loader,test_video = dataloader.run()
