@@ -13,8 +13,10 @@ BASE_DIR = os.getcwd()
 DATA_DIR = '/media/bighdd1/arayasam/dataset/UCF101'
 RGB_DIR  = DATA_DIR + '/jpegs_256/'
 # POSE_DIR = DATA_DIR + '/poseframes'
-POSE_DIR = '/media/bighdd1/arayasam/dataset/output_heatmaps_folder/'
-UCF_LIST = '/media/bighdd1/arayasam/actionRecognition/UCF_list/'
+# POSE_DIR = '/media/bighdd1/arayasam/dataset/output_heatmaps_folder/'
+POSE_DIR = '/home/ubuntu/dataset/UCF101/heatmaps/'
+UCF_LIST = BASE_DIR + '/UCF_list/'
+POTION_DIR = '/home/ubuntu/dataset/UCF101/potion/'
 
 class potion_dataset(Dataset):  
     def __init__(self, dic, rgb_dir, pose_dir, mode, transform=None):
@@ -31,49 +33,57 @@ class potion_dataset(Dataset):
 
     def potion_transform(self, video_name):
         path = self.pose_dir + 'v_' + video_name + '/'
-        images = []
-        for filename in sorted(os.listdir(path)):
-            img = cv2.imread(os.path.join(path, filename), cv2.IMREAD_GRAYSCALE)
-            # Transform image to monochrome
-            if img is not None:
-                potion_t = img.copy()
-                potion_t[np.where(potion_t > [0])] = [255]
-                potion_t = cv2.cvtColor(potion_t, cv2.COLOR_GRAY2BGR)
-                images.append(potion_t)
+        potion_dir = POTION_DIR + video_name + "_agg_image.png" 
+        pot = cv2.imread(potion_dir)
+        if pot is not None:
+            return pot
+        else:
+            images = []
+            for filename in sorted(os.listdir(path)):
+                img = cv2.imread(os.path.join(path, filename), cv2.IMREAD_GRAYSCALE)
+                # Transform image to monochrome
+                if img is not None:
+                    potion_t = img.copy()
+                    potion_t[np.where(potion_t > [0])] = [255]
+                    potion_t = cv2.cvtColor(potion_t, cv2.COLOR_GRAY2BGR)
+                    images.append(potion_t)
 
-        b = False
-        r = g = True
-        pose_list = []
-        agg_image = images[0]
-        agg_image[np.where(True)] = [0, 0, 0]
-        canvas_split = len(images)//2 + 1
-        for idx, img in enumerate(images):
-            # Modulate ratio to get blend of red-green and green-blue
-            ratio = (idx % canvas_split)/canvas_split
-            if idx >= canvas_split:
-                r = False
-                b = True
-                ratio = 1 - ratio
+            b = False
+            r = g = True
+            pose_list = []
+            agg_image = images[0]
+            agg_image[np.where(True)] = [0, 0, 0]
+            canvas_split = len(images)//2 + 1
+            for idx, img in enumerate(images):
+                # Modulate ratio to get blend of red-green and green-blue
+                ratio = (idx % canvas_split)/canvas_split
+                if idx >= canvas_split:
+                    r = False
+                    b = True
+                    ratio = 1 - ratio
 
-            # Normalize the pixel intensities - no. of frames
-            img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255/canvas_split, g*ratio*255/canvas_split, r*(1-ratio)*255/canvas_split]
-            # img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255, g*ratio*255, r*(1-ratio)*255]
-            pose_list.append(img)
+                # Normalize the pixel intensities - no. of frames
+                img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255/canvas_split, g*ratio*255/canvas_split, r*(1-ratio)*255/canvas_split]
+                # img[np.where((img == [255, 255, 255]).all(axis=2))] = [b*(1 - ratio)*255, g*ratio*255, r*(1-ratio)*255]
+                pose_list.append(img)
 
-            agg_image = cv2.add(agg_image, img)
-            
-        # verification snippet - REMOVE 
-        name = "/media/bighdd1/arayasam/actionRecognition/output/agg_image_" + video_name + ".png" 
-        cv2.imwrite(name, agg_image)
+                agg_image = cv2.add(agg_image, img)
+                
+            # verification snippet - REMOVE 
+            # name = "/media/bighdd1/arayasam/actionRecognition/output/agg_image_" + video_name + ".png" 
+            # name = "/home/ubuntu/dataset/UCF101/potion/" + video_name + "_agg_image.png" 
+            cv2.imwrite(potion_dir, agg_image)
 
-        return images, pose_list, agg_image
+            # return images, pose_list, agg_image
+            return agg_image
 
     def load_ucf_image(self, video_name):
         rgb_path = self.rgb_dir + 'v_' + video_name #+'/v_'+video_name+'_'
   
         # PoTion transformation
-        image_list, pose_list, img = self.potion_transform(video_name)
+        # image_list, pose_list, img = self.potion_transform(video_name)
         # img = Image.open(rgb_path + '/frame000001.jpg')
+        img = self.potion_transform(video_name)
 
         # Test image being loaded
         # print("Loading image validation:")

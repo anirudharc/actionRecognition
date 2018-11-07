@@ -19,8 +19,9 @@ BASE_DIR = os.getcwd()
 DATA_DIR = '/media/bighdd1/arayasam/dataset/UCF101'
 RGB_DIR  = DATA_DIR + '/jpegs_256/'
 # POSE_DIR = DATA_DIR + '/poseframes'
-POSE_DIR = '/media/bighdd1/arayasam/dataset/output_heatmaps_folder/'
-UCF_LIST = '/media/bighdd1/arayasam/actionRecognition/UCF_list/'
+# POSE_DIR = '/media/bighdd1/arayasam/dataset/output_heatmaps_folder/'
+POSE_DIR = '/home/ubuntu/dataset/UCF101/heatmaps/'
+UCF_LIST = BASE_DIR + '/UCF_list/'
 
 #Initialize arguments
 parser = argparse.ArgumentParser(description='UCF101 spatial stream on resnet101')
