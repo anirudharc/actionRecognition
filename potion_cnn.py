@@ -12,15 +12,15 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.autograd import Variable
 import numpy as np
-from alexnet import *
+# from alexnet import *
+from potnet import * 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 BASE_DIR = os.getcwd()
 DATA_DIR = '/media/bighdd1/arayasam/dataset/UCF101'
+# DATA_DIR = '/home/ubuntu/dataset/UCF101'
 RGB_DIR  = DATA_DIR + '/jpegs_256/'
-# POSE_DIR = DATA_DIR + '/poseframes'
-# POSE_DIR = '/media/bighdd1/arayasam/dataset/output_heatmaps_folder/'
-POSE_DIR = '/home/ubuntu/dataset/UCF101/heatmaps/'
+POSE_DIR = DATA_DIR + '/heatmaps/'
 UCF_LIST = BASE_DIR + '/UCF_list/'
 
 #Initialize arguments
@@ -61,9 +61,11 @@ def save_models(epoch):
     print("Chekcpoint saved")
 
 
-def test():
+def test(test_loader):
     model.eval()
     test_acc = 0.0
+    print("Test Loader:")
+    print(len(test_loader))
     for i, (keys, data_dict, labels) in enumerate(test_loader):
         images = data_dict['potion']
         if cuda_avail:
@@ -73,16 +75,17 @@ def test():
         # Predict classes using images from the test set
         outputs = model(images)
         _, prediction = torch.max(outputs.data, 1)
-        
+        # print("Prediction size:")
+        # print(prediction.size())
         test_acc += torch.sum(prediction == labels.data)
 
-    # Compute the average acc and loss over all 10000 test images
-    test_acc = test_acc / 10000
+    # Compute the average acc and loss over all test images
+    test_acc = test_acc.item()/ (len(test_loader)*25)
 
     return test_acc
 
 
-def train(num_epochs):
+def train(num_epochs, train_loader, test_loader):
     best_acc = 0.0
 
     for epoch in range(num_epochs):
@@ -91,7 +94,9 @@ def train(num_epochs):
         train_loss = 0.0
 
         progress = tqdm(train_loader)
+
         for i, (data_dict,labels) in enumerate(progress):
+
             images = data_dict['potion']
 
             # Move images and labels to gpu if available
@@ -103,6 +108,7 @@ def train(num_epochs):
             optimizer.zero_grad()
             # Predict classes using images from the test set
             outputs = model(images)
+            
             # Compute the loss based on the predictions and actual labels
             loss = loss_fn(outputs, labels)
             # Backpropagate the loss
@@ -115,16 +121,29 @@ def train(num_epochs):
             _, prediction = torch.max(outputs.data, 1)
             
             train_acc += torch.sum(prediction == labels.data)
+            # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+            # print("PREDICTIONS:")
+            # print(prediction)
+            # print("LABELS:")
+            # print(labels)
+            # print(train_acc.item())
+            # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+
 
         # Call the learning rate adjustment function
         adjust_learning_rate(epoch)
 
-        # Compute the average acc and loss over all 50000 training images
-        train_acc = train_acc / 50000
-        train_loss = train_loss / 50000
+        # Compute the average acc and loss over all training images
+        train_acc = train_acc.item() / (len(train_loader)*25)
+        train_loss = train_loss.item() / (len(train_loader)*25)
 
         # Evaluate on the test set
-        test_acc = test()
+        test_acc = test(test_loader)
+
+        # print("RESULTS:")
+        # print("###################################")
+        # print(train_acc, len(train_loader), test_acc, len(test_loader), train_loss)
+        # print("###################################")
 
         # Save the model if the test acc is greater than our current best
         if test_acc > best_acc:
@@ -159,4 +178,4 @@ if __name__ == "__main__":
                         )
 
     train_loader, test_loader, test_video = data_loader.run()
-    train(arg.epochs)
+    train(arg.epochs, train_loader, test_loader)

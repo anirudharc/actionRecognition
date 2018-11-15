@@ -11,12 +11,12 @@ import numpy as np
 
 BASE_DIR = os.getcwd()
 DATA_DIR = '/media/bighdd1/arayasam/dataset/UCF101'
+# DATA_DIR = '/home/ubuntu/dataset/UCF101'
 RGB_DIR  = DATA_DIR + '/jpegs_256/'
-# POSE_DIR = DATA_DIR + '/poseframes'
-# POSE_DIR = '/media/bighdd1/arayasam/dataset/output_heatmaps_folder/'
-POSE_DIR = '/home/ubuntu/dataset/UCF101/heatmaps/'
+POSE_DIR = DATA_DIR + '/heatmaps/'
+POTION_DIR = DATA_DIR + '/potion/'
 UCF_LIST = BASE_DIR + '/UCF_list/'
-POTION_DIR = '/home/ubuntu/dataset/UCF101/potion/'
+
 
 class potion_dataset(Dataset):  
     def __init__(self, dic, rgb_dir, pose_dir, mode, transform=None):
@@ -69,9 +69,7 @@ class potion_dataset(Dataset):
 
                 agg_image = cv2.add(agg_image, img)
                 
-            # verification snippet - REMOVE 
-            # name = "/media/bighdd1/arayasam/actionRecognition/output/agg_image_" + video_name + ".png" 
-            # name = "/home/ubuntu/dataset/UCF101/potion/" + video_name + "_agg_image.png" 
+            # Save PoTion image
             cv2.imwrite(potion_dir, agg_image)
 
             # return images, pose_list, agg_image
